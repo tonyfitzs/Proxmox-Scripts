@@ -47,7 +47,7 @@ SSH_PUBLIC_KEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCw02bxFxR5DE2k0ihoQ8D7uE4o
 GATEWAY="10.0.110.1"
 DNS_PRIMARY="10.0.110.1"
 DNS_SECONDARY="8.8.4.4"
-SUBNET_MASK="24"
+SUBNET_MASK="23"
 
 # Server specs - Ansible
 ANSIBLE_VMID="201"
@@ -92,7 +92,7 @@ show_menu() {
   echo ""
   echo "===================================================="
   echo "Proxmox VM Provisioning - FlippiQ Infrastructure"
-  echo "Version: 1.09"
+  echo "Version: 1.08"
   echo "Author: Tony Fitzsimmons (tonyfitzs)"
   echo "===================================================="
   echo ""
@@ -106,29 +106,22 @@ show_menu() {
   read -p "Enter choice [1-4]: " choice < /dev/tty
 }
 
-select_cloud_init() {
+function select_cloud_init() {
   if [ "$OS_TYPE" = "ubuntu" ]; then
     USE_CLOUD_INIT="yes"
-    echo "[INFO] Cloud-Init: yes (Ubuntu requires Cloud-Init)"
+    echo -e "${CLOUD:-${TAB}☁️${TAB}${CL}}${BOLD}${DGN}Cloud-Init: ${BGN}yes (Ubuntu requires Cloud-Init)${CL}"
     return
   fi
 
-  if command -v whiptail &> /dev/null; then
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "CLOUD-INIT" \
-      --yesno "Enable Cloud-Init for VM configuration?\n\nCloud-Init allows automatic configuration of:\n- User accounts and passwords\n- SSH keys\n- Network settings (DHCP/Static)\n- DNS configuration\n\nYou can also configure these settings later in Proxmox UI." 16 68); then
-      USE_CLOUD_INIT="yes"
-      echo "[INFO] Cloud-Init: yes"
-    else
-      USE_CLOUD_INIT="no"
-      echo "[INFO] Cloud-Init: no"
-    fi
-  else
-    # Default to yes if whiptail not available
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "CLOUD-INIT" \
+    --yesno "Enable Cloud-Init for VM configuration?\n\nCloud-Init allows automatic configuration of:\n- User accounts and passwords\n- SSH keys\n- Network settings (DHCP/Static)\n- DNS configuration\n\nYou can also configure these settings later in Proxmox UI.\n\nNote: Debian without Cloud-Init will use nocloud image with console auto-login." 18 68); then
     USE_CLOUD_INIT="yes"
-    echo "[INFO] Cloud-Init: yes (whiptail not found, enabling by default)"
+    echo -e "${CLOUD:-${TAB}☁️${TAB}${CL}}${BOLD}${DGN}Cloud-Init: ${BGN}yes${CL}"
+  else
+    USE_CLOUD_INIT="no"
+    echo -e "${CLOUD:-${TAB}☁️${TAB}${CL}}${BOLD}${DGN}Cloud-Init: ${BGN}no${CL}"
   fi
 }
-
 provision_vm() {
   local VMID="$1"
   local HOSTNAME="$2"
@@ -152,7 +145,6 @@ packages:
   - qemu-guest-agent
   - curl
   - ca-certificates
-  - whiptail
 
 users:
   - name: adminops
@@ -184,12 +176,9 @@ write_files:
               addresses: [$DNS_PRIMARY, $DNS_SECONDARY]
 "
 
-  # Only proceed with cloud-init if enabled
-  if [ "$USE_CLOUD_INIT" = "yes" ]; then
-    # Create temporary cloud-init file
-    local CLOUD_INIT_FILE="/tmp/cloud-init-$VMID.txt"
-    echo "$CLOUD_INIT_USER_DATA" > "$CLOUD_INIT_FILE"
-  fi
+  # Create temporary cloud-init file
+  local CLOUD_INIT_FILE="/tmp/cloud-init-$VMID.txt"
+  echo "$CLOUD_INIT_USER_DATA" > "$CLOUD_INIT_FILE"
   
   # Create VM
   msg_info "Creating VM $VMID"
@@ -207,7 +196,7 @@ write_files:
     --tags community-script
 
   msg_info "Importing disk image"
-  # Download and import Debian 12 cloud image
+  # Download and import Debian 13 cloud image
   local IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
   local IMAGE_FILE="/tmp/debian-12-generic-amd64.qcow2"
   
@@ -221,20 +210,15 @@ write_files:
   # Attach disk
   qm set $VMID --scsi0 $STORAGE:vm-$VMID-disk-0
   
-  # Add cloud-init if enabled
-  if [ "$USE_CLOUD_INIT" = "yes" ]; then
-    qm set $VMID --cicustom "user=local:snippets/cloud-init-$VMID"
-    
-    # Upload cloud-init config
-    mkdir -p /var/lib/vz/snippets
-    cp "$CLOUD_INIT_FILE" "/var/lib/vz/snippets/cloud-init-$VMID"
-    
-    # Clean up
-    rm -f "$CLOUD_INIT_FILE"
-  fi
+  # Add cloud-init
+  qm set $VMID --cicustom "user=local:snippets/cloud-init-$VMID"
   
-  # Clean up image file
-  rm -f "$IMAGE_FILE"
+  # Upload cloud-init config
+  mkdir -p /var/lib/vz/snippets
+  cp "$CLOUD_INIT_FILE" "/var/lib/vz/snippets/cloud-init-$VMID"
+  
+  # Clean up
+  rm -f "$CLOUD_INIT_FILE" "$IMAGE_FILE"
   
   msg_ok "VM $VMID ($HOSTNAME) created successfully"
   msg_ok "Static IP: $STATIC_IP"
@@ -271,3 +255,4 @@ main() {
 }
 
 main "$@"
+
