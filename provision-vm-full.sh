@@ -31,52 +31,71 @@ function cleanup() {
   log_info "Cleanup complete"
 }
 
-set -e
-trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
-trap cleanup EXIT
+function download_debian_iso() {
+  local target_node="$1"
+  local target_ip="${PROX_IPS[${target_node}]}"
+  
+  log_info "Downloading Debian 12 ISO to $target_node..."
+  
+  ssh -i "$PROX_SSH_KEY" "${PROX_SSH_USER}@${target_ip}" bash << 'DOWNLOAD_ISO'
+ISO_PATH="/var/lib/vz/template/iso/debian-12.13.0-amd64-netinst.iso"
 
-################################################################################
-# CONFIGURATION
-################################################################################
+if [ -f "$ISO_PATH" ]; then
+  echo "ISO already exists, skipping download"
+else
+  echo "Downloading Debian ISO..."
+  cd /var/lib/vz/template/iso/
+  wget -q "https://cdimage.debian.org/cdimage/archive/12.13.0/amd64/iso-cd/debian-12.13.0-amd64-netinst.iso"
+  echo "ISO downloaded successfully"
+fi
+DOWNLOAD_ISO
 
-declare -A PROX_IPS=(
-  [prox-one]="10.110.10.3"
-  [prox-two]="10.110.10.4"
-  [prox-three]="10.110.10.5"
-)
+  log_info "Debian ISO ready on $target_node"
+}
 
-GATEWAY="10.0.110.1"
-DNS_PRIMARY="10.0.110.1"
-DNS_SECONDARY="8.8.4.4"
-SUBNET_MASK="24"
+function create_vm() {
+  local vm_id="$1"
+  local vm_name="$2"
+  local cpu_cores="$3"
+  local ram_mb="$4"
+  local target_node="$5"
+  local target_ip="${PROX_IPS[${target_node}]}"
+  
+  log_info "Creating VM $vm_id ($vm_name) on $target_node..."
+  
+  ssh -i "$PROX_SSH_KEY" "${PROX_SSH_USER}@${target_ip}" qm create $vm_id \
+    --name $vm_name \
+    --cores $cpu_cores \
+    --memory $ram_mb \
+    --machine q35 \
+    --ostype l26 \
+    --scsihw virtio-scsi-pci \
+    --net0 virtio,bridge=vmbr0 \
+    --boot order=ide2 \
+    --ide2 local:iso/debian-12.13.0-amd64-netinst.iso,media=cdrom \
+    --agent enabled=1 \
+    --onboot 1
+  
+  log_info "VM $vm_id created successfully on $target_node"
+}
 
-DEBIAN_ISO_URL="https://cdimage.debian.org/cdimage/archive/12.13.0/amd64/iso-cd/debian-12.13.0-amd64-netinst.iso"
-DEBIAN_ISO_FILENAME="debian-12.13.0-amd64-netinst.iso"
+function cleanup_iso() {
+  local target_node="$1"
+  local target_ip="${PROX_IPS[${target_node}]}"
+  
+  log_info "Cleaning up ISO from $target_node..."
+  
+  ssh -i "$PROX_SSH_KEY" "${PROX_SSH_USER}@${target_ip}" \
+    rm -f /var/lib/vz/template/iso/debian-12.13.0-amd64-netinst.iso
+  
+  log_info "ISO cleanup complete"
+}
 
-PROX_SSH_USER="root"
-PROX_SSH_KEY="${PROX_SSH_KEY:-/path/to/proxmox/private/key}"
-
-STORAGE_LOCAL="local-lvm"
-STORAGE_SHARED="zpool"
-
-ANSIBLE_VM_ID="201"
-ANSIBLE_NAME="ansible-ctrl"
-ANSIBLE_CPU="4"
-ANSIBLE_RAM="8192"
-ANSIBLE_DISK="50"
-ANSIBLE_TARGET_NODE="prox-two"
-ANSIBLE_IP="10.110.10.8"
-
-NFT_VM_ID="101"
-NFT_NAME="nft-test"
-NFT_CPU="4"
-NFT_RAM="8192"
-NFT_DISK="100"
-NFT_TARGET_NODE="prox-one"
-NFT_IP="10.110.10.7"
-
-FLIPPIQ_VM_ID="100"
-FLIPPIQ_NAME="flippiq-prod"
-FLIPPIQ_CPU="8"
-FLIPPIQ_RAM="16384"
-FLIPPIQ_DISK="400"
+function show_menu() {
+  echo ""
+  echo "===================================================="
+  echo "Proxmox VM Provisioning - FlippiQ Infrastructure"
+  echo "Author: Tony Fitzsimmons (tonyfitzs)"
+  echo "===================================================="
+  echo ""
+  echo "Select server type to
