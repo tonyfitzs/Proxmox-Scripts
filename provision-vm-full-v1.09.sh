@@ -21,6 +21,7 @@ load_functions
 APP="Docker"
 APP_TYPE="vm"
 NSAPP="docker-vm"
+var_os="debian"
 OS_TYPE="debian"
 var_version="12"
 
@@ -196,8 +197,8 @@ write_files:
 
   msg_info "Importing disk image"
   # Download and import Debian 13 cloud image
-  local IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
-  local IMAGE_FILE="/tmp/debian-13-generic-amd64.qcow2"
+  local IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
+  local IMAGE_FILE="/tmp/debian-12-generic-amd64.qcow2"
   
   if [ ! -f "$IMAGE_FILE" ]; then
     curl -fsSL -o "$IMAGE_FILE" "$IMAGE_URL"
