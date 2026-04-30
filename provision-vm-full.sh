@@ -8,6 +8,29 @@
 # License: MIT
 ################################################################################
 
+################################################################################
+# FUNCTIONS
+################################################################################
+
+function log_info() {
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] [INFO] $*"
+}
+
+function log_error() {
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] [ERROR] $*" >&2
+}
+
+function error_handler() {
+  local line_number="$1"
+  local command="$2"
+  log_error "Command failed at line $line_number: $command"
+  exit 1
+}
+
+function cleanup() {
+  log_info "Cleanup complete"
+}
+
 set -e
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 trap cleanup EXIT
