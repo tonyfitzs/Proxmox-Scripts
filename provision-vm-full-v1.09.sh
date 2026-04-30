@@ -21,8 +21,8 @@ load_functions
 APP="Docker"
 APP_TYPE="vm"
 NSAPP="docker-vm"
-var_os="debian"
-var_version="13"
+OS_TYPE="debian"
+var_version="12"
 
 GEN_MAC=02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//')
 RANDOM_UUID="$(cat /proc/sys/kernel/random/uuid)"
