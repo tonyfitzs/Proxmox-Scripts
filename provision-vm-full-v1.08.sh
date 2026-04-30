@@ -140,6 +140,7 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
   - usermod -aG dnetplan apply
+  - netplan apply
 
 write_files:
   - path: /etc/netplan/00-installer-config.yaml
