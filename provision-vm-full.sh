@@ -4,7 +4,7 @@
 # Proxmox VM Provisioning Script for FlippiQ Infrastructure
 # Author: Tony Fitzsimmons (tonyfitzs)
 # Purpose: Provision Ansible, NFT test, and FlippiQ production VMs
-# Version: 1.3
+# Version: 1.4
 # License: MIT
 ################################################################################
 
@@ -53,8 +53,3 @@ DNS_SECONDARY="8.8.4.4"
 SUBNET_MASK="24"
 
 # Debian 12 ISO
-DEBIAN_ISO_URL="https://cdimage.debian.org/cdimage/archive/12.13.0/amd64/iso-cd/debian-12.13.0-amd64-netinst.iso"
-DEBIAN_ISO_FILENAME="debian-12.13.0-amd64-netinst.iso"
-
-# SSH configuration
-PROX_SSH_USER="root"
