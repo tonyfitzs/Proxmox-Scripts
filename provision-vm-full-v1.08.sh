@@ -139,7 +139,7 @@ runcmd:
   - curl -fsSL https://get.docker.com | sh
   - systemctl enable docker
   - systemctl start docker
-  - usermod -aG docker adminops
+  - usermod -aG dnetplan apply
 
 write_files:
   - path: /etc/netplan/00-installer-config.yaml
